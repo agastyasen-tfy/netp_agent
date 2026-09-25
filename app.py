@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import secrets
 import time
@@ -58,6 +59,10 @@ SYSTEM_PROMPT = (
 
 app = FastAPI(title=AGENT_NAME)
 STATIC = Path(__file__).parent / "static"
+log = logging.getLogger("mock-agent")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# Set LOG_TOKENS=1 to print the full (signature-masked) JWTs to the terminal on every call.
+LOG_TOKENS = os.environ.get("LOG_TOKENS") == "1"
 
 
 # --- Agent identity (client credentials, cached by MSAL) ----------------------
@@ -110,21 +115,58 @@ def user_token(s: Session) -> str:
     return result["access_token"]
 
 
+def _b64json(segment: str) -> dict:
+    import base64
+    segment += "=" * (-len(segment) % 4)
+    return json.loads(base64.urlsafe_b64decode(segment))
+
+
 def _decode_claims(token: str) -> dict:
     try:
-        import base64
-        payload = token.split(".")[1]
-        payload += "=" * (-len(payload) % 4)
-        return json.loads(base64.urlsafe_b64decode(payload))
+        return _b64json(token.split(".")[1])
     except Exception:
         return {}
 
 
+CLAIM_KEYS = ("iss", "aud", "azp", "appid", "scp", "roles", "oid", "preferred_username", "name", "tid", "iat", "exp", "ver")
+
+
+def describe_token(token: str) -> dict:
+    """Header, selected claims, and the raw JWT with its signature masked (so it cannot be replayed)."""
+    parts = token.split(".")
+    header = {}
+    try:
+        header = _b64json(parts[0])
+    except Exception:
+        pass
+    claims = _decode_claims(token)
+    masked = ".".join(parts[:2] + ["<signature-" + str(len(parts[2])) + "-chars-hidden>"]) if len(parts) == 3 else "<not a JWT>"
+    return {
+        "header": {k: header.get(k) for k in ("typ", "alg", "kid")},
+        "claims": {k: claims.get(k) for k in CLAIM_KEYS if k in claims},
+        "raw_masked": masked,
+    }
+
+
+def _log_token(label: str, token: str) -> None:
+    c = _decode_claims(token)
+    log.info(
+        "%-12s aud=%s azp=%s user=%s scp=%s",
+        label, c.get("aud"), c.get("azp") or c.get("appid"), c.get("preferred_username") or "-", c.get("scp") or c.get("roles") or "-",
+    )
+
+
 # --- Gateway helpers -------------------------------------------------------------
 def identity_headers(s: Session) -> dict[str, str]:
+    u, a = user_token(s), agent_token()
+    _log_token("user token", u)
+    _log_token("agent token", a)
+    if LOG_TOKENS:
+        log.info("Authorization: Bearer %s", describe_token(u)["raw_masked"])
+        log.info("x-tfy-agent-authorization: Bearer %s", describe_token(a)["raw_masked"])
     return {
-        "Authorization": f"Bearer {user_token(s)}",
-        "x-tfy-agent-authorization": f"Bearer {agent_token()}",
+        "Authorization": f"Bearer {u}",
+        "x-tfy-agent-authorization": f"Bearer {a}",
     }
 
 
@@ -221,17 +263,29 @@ async def logout(request: Request, response: Response):
     return {"ok": True}
 
 
-@app.get("/api/identity")
-async def identity(request: Request, response: Response):
-    """What the gateway will see on the next call: both tokens' key claims (no secrets)."""
+@app.get("/api/tokenflow")
+async def tokenflow(request: Request, response: Response):
+    """
+    The three tokens in one call:
+      1. user token   -> sent to the gateway in Authorization
+      2. agent token  -> sent to the gateway in x-tfy-agent-authorization
+      3. downstream   -> what the MCP server received after the gateway's OBO exchange
+                         (the agent never sees this token; `whoami` reports its claims back)
+    Raw JWTs are returned with the signature masked so they cannot be replayed from a screen.
+    """
     s = get_session(request, response)
-    u = _decode_claims(user_token(s))
-    a = _decode_claims(agent_token())
-    pick = lambda c, keys: {k: c.get(k) for k in keys}
-    return {
-        "user_token": pick(u, ("aud", "azp", "scp", "preferred_username", "oid", "iss")),
-        "agent_token": pick(a, ("aud", "azp", "roles", "iss")),
-    }
+    u, a = user_token(s), agent_token()
+    out = {"user_token": describe_token(u), "agent_token": describe_token(a), "downstream": None, "downstream_error": None}
+    try:
+        async with Client(StreamableHttpTransport(MCP_GATEWAY_URL, headers={
+            "Authorization": f"Bearer {u}", "x-tfy-agent-authorization": f"Bearer {a}",
+        })) as c:
+            res = await c.call_tool("whoami", {})
+        out["downstream"] = res.data if res.data is not None else _result_text(res)
+        log.info("downstream    (via whoami) %s", json.dumps(out["downstream"]))
+    except Exception as e:
+        out["downstream_error"] = str(e)
+    return out
 
 
 @app.get("/api/tools")
