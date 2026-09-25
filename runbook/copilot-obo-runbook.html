@@ -1,0 +1,501 @@
+<title>Copilot Studio OBO Runbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F5F6F8; --surface:#FFFFFF; --ink:#1A2130; --muted:#5A6474; --line:#DDE1E8;
+  --accent:#1F5F9E; --accent-ink:#FFFFFF; --soft:#E8EFF8;
+  --warn-bg:#FFF6E5; --warn-line:#E0A93A; --warn-ink:#6B4A00;
+  --you-bg:#EDF7F1; --you-line:#3F9A6A; --you-ink:#1B5A38;
+  --code-bg:#F0F2F5; --filled:#0F6E68; --empty:#B3471F;
+  --entra:#2F5DA8; --tf:#6B3FA0; --pa:#742774; --cs:#0F7B6C;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#12161D; --surface:#1A2029; --ink:#E7EAEF; --muted:#9AA4B3; --line:#2C3441;
+    --accent:#7FB0E8; --accent-ink:#0F1620; --soft:#1F2A3A;
+    --warn-bg:#2A2212; --warn-line:#B8862A; --warn-ink:#F1D28A;
+    --you-bg:#142519; --you-line:#3F9A6A; --you-ink:#A9E3C0;
+    --code-bg:#11161E; --filled:#5BC8BE; --empty:#F0906A;
+    --entra:#8DB0EA; --tf:#BFA2E8; --pa:#D9A0D9; --cs:#7FD1C3;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12161D; --surface:#1A2029; --ink:#E7EAEF; --muted:#9AA4B3; --line:#2C3441;
+  --accent:#7FB0E8; --accent-ink:#0F1620; --soft:#1F2A3A;
+  --warn-bg:#2A2212; --warn-line:#B8862A; --warn-ink:#F1D28A;
+  --you-bg:#142519; --you-line:#3F9A6A; --you-ink:#A9E3C0;
+  --code-bg:#11161E; --filled:#5BC8BE; --empty:#F0906A;
+  --entra:#8DB0EA; --tf:#BFA2E8; --pa:#D9A0D9; --cs:#7FD1C3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 80px;padding-inline:20px}
+header h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance}
+header p.lede{color:var(--muted);margin:0;max-width:66ch}
+.grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:32px;margin-top:28px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:1fr}}
+aside{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px)}
+@media (max-width:980px){aside{position:static}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px;font-weight:600}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:12.5px;color:var(--muted)}
+.field input{font-family:var(--mono);font-size:12.5px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:100%}
+.field input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.field small{font-size:11.5px;color:var(--muted)}
+.panel .note{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+nav.toc{margin-top:16px}
+nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:ph -1}
+nav.toc li{counter-increment:ph;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px}
+nav.toc li:first-child{border-top:0}
+nav.toc a{color:var(--ink);text-decoration:none;display:flex;gap:10px}
+nav.toc a::before{content:counter(ph);font-family:var(--mono);color:var(--muted);min-width:1.2em}
+nav.toc a:hover{color:var(--accent)}
+main{min-width:0}
+section.phase{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:26px 28px;margin-bottom:24px}
+@media (max-width:600px){section.phase{padding:20px 16px}}
+.phase-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+.phase-head .num{font-family:var(--mono);color:var(--muted);font-size:13px}
+.phase-head h2{margin:0;font-size:21px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.console{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.console.entra{color:var(--entra)}.console.tf{color:var(--tf)}.console.pa{color:var(--pa)}.console.cs{color:var(--cs)}
+.where{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+.where code{font-size:12.5px}
+h3{font-size:16px;font-weight:600;margin:26px 0 8px}
+p{margin:0 0 10px;max-width:72ch}
+ol.steps{padding-left:0;margin:0 0 14px;list-style:none;counter-reset:st}
+ol.steps>li{counter-increment:st;position:relative;padding-left:34px;margin-bottom:9px;max-width:76ch}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:22px;height:22px;border-radius:50%;background:var(--soft);color:var(--accent);font-family:var(--mono);font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:500}
+ol.steps ul{margin:6px 0 0;padding-left:18px}
+ol.steps ul li{margin-bottom:4px}
+b{font-weight:600}
+code,kbd{font-family:var(--mono);font-size:.92em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--mono);font-size:12.5px;line-height:1.5;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:10px 0 14px;position:relative}
+pre code{background:none;padding:0}
+.copy{position:absolute;top:8px;right:8px;font:12px var(--font);border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:6px;padding:3px 9px;cursor:pointer}
+.copy:hover,.copy:focus-visible{color:var(--accent);border-color:var(--accent);outline:none}
+.v{color:var(--filled);font-weight:500}
+.v.empty{color:var(--empty)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin:8px 0 14px}
+.tbl{overflow-x:auto}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+.identities td:first-child{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+.callout{border-left:3px solid;border-radius:6px;padding:10px 14px;margin:12px 0 14px;font-size:14px;max-width:76ch}
+.callout.warn{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
+.callout.you{background:var(--you-bg);border-color:var(--you-line);color:var(--you-ink)}
+.callout code{background:transparent;padding:0;font-weight:500}
+.check{display:flex;gap:10px;align-items:flex-start;margin:6px 0;max-width:76ch}
+.check input{margin-top:4px;accent-color:var(--accent)}
+footer{color:var(--muted);font-size:13px;margin-top:8px;max-width:76ch}
+footer a,main a{color:var(--accent)}
+a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Copilot Studio → TrueFoundry MCP Gateway, on-behalf-of</h1>
+  <p class="lede">Click-by-click setup for the OBO flow: three Entra app registrations, the demo MCP server deployed on TrueFoundry, the gateway configured to exchange tokens, one Power Apps connector, and a Copilot Studio agent that calls it as the signed-in user. Fill the worksheet as you go; every snippet below updates itself.</p>
+</header>
+
+<div class="grid">
+<aside>
+  <div class="panel">
+    <h2>Values worksheet</h2>
+    <div class="field"><label for="v-tenant">Entra Tenant ID</label><input id="v-tenant" data-key="tenant" placeholder="00000000-0000-…" spellcheck="false"><small>Entra admin center → Overview</small></div>
+    <div class="field"><label for="v-mcpapi">mcp-api · Application (client) ID</label><input id="v-mcpapi" data-key="mcpapi" placeholder="from Phase 1a" spellcheck="false"></div>
+    <div class="field"><label for="v-agentsvc">agent-service · Application (client) ID</label><input id="v-agentsvc" data-key="agentsvc" placeholder="from Phase 1b" spellcheck="false"></div>
+    <div class="field"><label for="v-agentclient">agent-client · Application (client) ID</label><input id="v-agentclient" data-key="agentclient" placeholder="from Phase 1c" spellcheck="false"></div>
+    <div class="field"><label for="v-svcurl">Deployed MCP server URL</label><input id="v-svcurl" data-key="svcurl" placeholder="https://mcp-obo-demo-….example.com" spellcheck="false"><small>from Phase 2, without the trailing /mcp</small></div>
+    <div class="field"><label for="v-gwhost">Gateway host</label><input id="v-gwhost" data-key="gwhost" placeholder="your-org.truefoundry.cloud" spellcheck="false"><small>from the MCP server's How To Use tab, Phase 3d</small></div>
+    <div class="field"><label for="v-gwpath">Gateway path for this server</label><input id="v-gwpath" data-key="gwpath" placeholder="/api/llm/mcp-servers/…/mcp" spellcheck="false"></div>
+    <div class="field"><label for="v-agentname">TrueFoundry agent name</label><input id="v-agentname" data-key="agentname" placeholder="copilot-obo-demo" spellcheck="false"></div>
+    <p class="note">Saved only in this browser. Never paste a client secret here or anywhere in this page — secrets go straight from Entra into TrueFoundry and Power Apps.</p>
+  </div>
+  <nav class="toc panel">
+    <h2>Phases</h2>
+    <ol>
+      <li><a href="#p0">Before you start</a></li>
+      <li><a href="#p1">Entra: three app registrations</a></li>
+      <li><a href="#p2">TrueFoundry: deploy the MCP server</a></li>
+      <li><a href="#p3">TrueFoundry: identity provider, agent, MCP server</a></li>
+      <li><a href="#p4">Power Apps: the custom connector</a></li>
+      <li><a href="#p5">Copilot Studio: the agent</a></li>
+      <li><a href="#p6">Prove the chain</a></li>
+      <li><a href="#p7">Troubleshooting</a></li>
+      <li><a href="#p8">Variant: agent hosted in your own environment</a></li>
+    </ol>
+  </nav>
+</aside>
+
+<main>
+
+<section class="phase" id="p0">
+  <div class="phase-head"><span class="num">0</span><h2>Before you start</h2></div>
+  <p class="where">What gets built, and what you need in hand.</p>
+
+  <h3>The three identities you are about to create</h3>
+  <div class="tbl"><table class="identities">
+    <tr><th>Entra app</th><th>What it is</th><th>Who holds its secret</th></tr>
+    <tr><td>mcp-api</td><td>The audience of your MCP server. The server rejects any token not minted for this ID. Exposes the delegated scope <code>Tool.Write</code>.</td><td>Nobody — it never signs anything</td></tr>
+    <tr><td>agent-service</td><td>The audience the connector's token targets, and the credential the gateway uses to perform the OBO exchange. Exposes <code>access_as_user</code>.</td><td><b>TrueFoundry</b> (the MCP server entry's Auth Data)</td></tr>
+    <tr><td>agent-client</td><td>The connector's own OAuth credentials. Its client ID arrives at the gateway as <code>azp</code> and is what the Agent Registry maps to your TrueFoundry agent.</td><td><b>Power Apps</b> (the connector's Security tab)</td></tr>
+  </table></div>
+
+  <h3>Token flow, in one breath</h3>
+  <p>User signs in to Copilot Studio → the connector performs OBO exchange #1 and gets a token with <code>aud = agent-service</code>, <code>oid = user</code>, <code>azp = agent-client</code> → the gateway validates it, resolves the agent (<code>azp</code>) and the user (<code>oid</code>), checks RBAC → the gateway performs OBO exchange #2 <i>as</i> agent-service and gets a token with <code>aud = mcp-api</code>, same user → your MCP server validates that and runs the tool.</p>
+
+  <h3>You need</h3>
+  <div class="check"><input type="checkbox" id="c1"><label for="c1">Entra role that can create app registrations <b>and</b> grant admin consent (Cloud Application Administrator is the least-privileged one that covers both).</label></div>
+  <div class="check"><input type="checkbox" id="c2"><label for="c2">A Power Platform environment with Copilot Studio, where you can create custom connectors. Connector and agent must be in the <b>same environment</b>.</label></div>
+  <div class="check"><input type="checkbox" id="c3"><label for="c3">A TrueFoundry tenant where you can deploy a Service, add an Identity Provider (Settings → Security &amp; Access), register an agent and add an MCP server.</label></div>
+  <div class="check"><input type="checkbox" id="c4"><label for="c4">The <code>mcp-obo-demo</code> folder pushed to a Git repo TrueFoundry can see (GitHub is simplest), or the TrueFoundry CLI installed for <code>deploy.py</code>.</label></div>
+  <div class="check"><input type="checkbox" id="c5"><label for="c5">Your own TrueFoundry user's email equals your Entra UPN (the gateway resolves the signed-in user by that claim — see Phase 3a).</label></div>
+
+  <div class="callout warn"><b>Order matters.</b> Phases 1 → 2 → 3 → 4 → 5 each consume an ID produced by the one before. Phase 2 (deploying the server) needs only the mcp-api ID from Phase 1a, so you can start it in a second tab once 1a is done.</div>
+</section>
+
+<section class="phase" id="p1">
+  <div class="phase-head"><span class="num">1</span><h2>Three app registrations</h2><span class="console entra">Entra admin center</span></div>
+  <p class="where">Open <a href="https://entra.microsoft.com" target="_blank" rel="noopener">entra.microsoft.com</a> → left nav <b>Identity → Applications → App registrations</b>. Copy the Tenant ID from <b>Overview</b> into the worksheet first.</p>
+
+  <h3>1a — <code>mcp-api</code>: the MCP server's audience</h3>
+  <ol class="steps">
+    <li>Click <b>+ New registration</b>. Name: <code>mcp-api</code>. Supported account types: <b>Accounts in this organizational directory only</b>. Leave Redirect URI empty. Click <b>Register</b>.</li>
+    <li>On the Overview page, copy <b>Application (client) ID</b> → worksheet field <i>mcp-api</i>.</li>
+    <li>Left nav <b>Expose an API</b>. Next to <i>Application ID URI</i> click <b>Add</b>, accept the default <code>api://<span class="v" data-v="mcpapi"></span></code>, click <b>Save</b>.</li>
+    <li>Still on Expose an API, click <b>+ Add a scope</b>:
+      <ul>
+        <li>Scope name: <code>Tool.Write</code></li>
+        <li>Who can consent: <b>Admins and users</b></li>
+        <li>Admin consent display name: <code>Call tools as the signed-in user</code></li>
+        <li>Admin consent description: <code>Allows tools to be invoked on behalf of the signed-in user.</code></li>
+        <li>State: <b>Enabled</b> → <b>Add scope</b></li>
+      </ul>
+    </li>
+    <li>Left nav <b>Manifest</b>. Find <code>"requestedAccessTokenVersion"</code> (in the newer Microsoft Graph manifest editor it sits under <code>"api"</code>). Change its value from <code>null</code> to <code>2</code>. Click <b>Save</b>.</li>
+  </ol>
+  <div class="callout warn">Do <b>not</b> add any Authorized client applications on mcp-api. That is the passthrough recipe; in OBO the pre-authorization belongs on agent-service.</div>
+
+  <h3>1b — <code>agent-service</code>: the connector's audience and the gateway's credential</h3>
+  <ol class="steps">
+    <li><b>App registrations → + New registration</b>. Name: <code>agent-service</code>. Single tenant. <b>Register</b>. Copy the Application (client) ID → worksheet field <i>agent-service</i>.</li>
+    <li><b>Expose an API</b> → Application ID URI <b>Add</b> → accept <code>api://<span class="v" data-v="agentsvc"></span></code> → <b>Save</b>.</li>
+    <li><b>+ Add a scope</b>: name <code>access_as_user</code>, Admins and users, display name <code>Access the gateway as the signed-in user</code>, any description, Enabled → <b>Add scope</b>.</li>
+    <li>Same page, section <b>Authorized client applications</b> → <b>+ Add a client application</b>. Client ID: <code>fe053c5f-3692-4f14-aef2-ee34fc081cae</code> (Microsoft's Azure API Connections service). Tick the <code>access_as_user</code> scope → <b>Add application</b>.</li>
+    <li>Left nav <b>API permissions → + Add a permission</b>:
+      <ul>
+        <li>Tab <b>APIs my organization uses</b> → search <code>mcp-api</code> → select it → <b>Delegated permissions</b> → tick <code>Tool.Write</code> → <b>Add permissions</b>.</li>
+        <li><b>+ Add a permission</b> again → <b>Microsoft Graph → Delegated permissions</b> → search <code>offline_access</code> → tick → <b>Add permissions</b>.</li>
+      </ul>
+    </li>
+    <li>Left nav <b>Manifest</b> → set <code>"requestedAccessTokenVersion"</code> to <code>2</code> → <b>Save</b>.</li>
+    <li>Left nav <b>Certificates &amp; secrets → Client secrets → + New client secret</b>. Description <code>truefoundry-gateway</code>, pick an expiry → <b>Add</b>. <b>Copy the Value column now</b> — it is shown once. Park it somewhere safe; it goes into TrueFoundry in Phase 3c.</li>
+  </ol>
+  <div class="callout you">Without step 4, every tool call pops an interactive sign-in instead of a silent hand-off. It looks like a broken connector, not a missing grant.</div>
+
+  <h3>1c — <code>agent-client</code>: the connector's credentials</h3>
+  <ol class="steps">
+    <li><b>App registrations → + New registration</b>. Name: <code>agent-client</code>. Single tenant. Under <i>Redirect URI</i> choose platform <b>Web</b> and enter <code>https://global.consent.azure-apim.net/redirect</code>. <b>Register</b>. Copy the Application (client) ID → worksheet field <i>agent-client</i>.</li>
+    <li><b>API permissions → + Add a permission</b>:
+      <ul>
+        <li><b>APIs my organization uses</b> → search <code>agent-service</code> → <b>Delegated</b> → tick <code>access_as_user</code> → <b>Add permissions</b>.</li>
+        <li><b>Microsoft Graph → Delegated</b> → <code>offline_access</code> → <b>Add permissions</b>.</li>
+      </ul>
+    </li>
+    <li><b>Certificates &amp; secrets → + New client secret</b>. Description <code>power-apps-connector</code> → <b>Add</b>. <b>Copy the Value now.</b> It goes into the Power Apps connector in Phase 4.</li>
+  </ol>
+  <div class="callout warn">Delegated, never Application, for every permission in this chain. An Application permission validates fine and silently drops the user.</div>
+
+  <h3>1d — Grant admin consent</h3>
+  <ol class="steps">
+    <li>Open <code>agent-service</code> → <b>API permissions</b> → <b>Grant admin consent for &lt;tenant&gt;</b> → <b>Yes</b>. Both rows should show a green tick under Status.</li>
+    <li>Open <code>agent-client</code> → <b>API permissions</b> → <b>Grant admin consent</b> → <b>Yes</b>.</li>
+  </ol>
+  <p>Give it a minute to propagate before the first call. A missing grant surfaces later as <code>AADSTS65001</code>.</p>
+</section>
+
+<section class="phase" id="p2">
+  <div class="phase-head"><span class="num">2</span><h2>Deploy the demo MCP server</h2><span class="console tf">TrueFoundry</span></div>
+  <p class="where">The server in <code>mcp-obo-demo/</code> validates Entra JWTs (issuer, JWKS, <code>aud = mcp-api</code>, <code>scp ∋ Tool.Write</code>) and exposes <code>add</code>, <code>subtract</code>, <code>echo</code> and <code>whoami</code>. Push the folder to a Git repo first.</p>
+
+  <ol class="steps">
+    <li>In the TrueFoundry UI: <b>Deployments → + New Deployment → Service</b>. Pick the workspace to deploy into.</li>
+    <li>Source: <b>Git Repo</b>. Choose the repository; if it is not listed, follow the link to connect your Git provider first. Branch: your default. <b>Path to build context</b>: the folder containing <code>server.py</code> (e.g. <code>./mcp-obo-demo/</code>, or <code>./</code> if it is the repo root).</li>
+    <li>Build: choose <b>Dockerfile</b>, path <code>./Dockerfile</code> (relative to the build context). Or pick the <b>Python</b> build with requirements <code>requirements.txt</code>, Python 3.12, command <code>python server.py</code>.</li>
+    <li>Ports: one port, <b>8000</b>, protocol TCP, <b>Expose</b> on, and give it a host/endpoint. This URL is what the gateway will call.</li>
+    <li>Environment variables (<b>+ Add</b> each):
+      <div class="tbl"><table>
+        <tr><th>Name</th><th>Value</th></tr>
+        <tr><td><code>ENTRA_TENANT_ID</code></td><td><code><span class="v" data-v="tenant"></span></code></td></tr>
+        <tr><td><code>MCP_API_APP_ID</code></td><td><code><span class="v" data-v="mcpapi"></span></code> — bare GUID; Entra v2 tokens put the GUID, not <code>api://…</code>, in <code>aud</code></td></tr>
+        <tr><td><code>REQUIRED_SCOPE</code></td><td><code>Tool.Write</code></td></tr>
+      </table></div>
+    </li>
+    <li>Resources: 0.2–0.5 CPU, 256–512 MB is plenty. Replicas 1. Click <b>Submit</b>.</li>
+    <li>Wait for the build and rollout to go green. Open the service → copy its endpoint URL → worksheet field <i>Deployed MCP server URL</i>.</li>
+    <li>Sanity check in a browser tab: <code><span class="v" data-v="svcurl"></span>/health</code> should return <code>{"status":"ok","audience":"<span class="v" data-v="mcpapi"></span>"}</code>. Hitting <code>/mcp</code> without a token returns <b>401</b> — that is correct.</li>
+  </ol>
+  <p>Prefer the CLI? <code>pip install -U truefoundry &amp;&amp; tfy login --host https://&lt;control-plane&gt;</code>, then <code>ENTRA_TENANT_ID=… MCP_API_APP_ID=… WORKSPACE_FQN=cluster:workspace python deploy.py</code> from inside the folder.</p>
+</section>
+
+<section class="phase" id="p3">
+  <div class="phase-head"><span class="num">3</span><h2>Identity provider, agent, MCP server</h2><span class="console tf">TrueFoundry</span></div>
+  <p class="where">Four entries: trust Entra tokens, register the mirror agent, store the agent-service secret, register the MCP server with the OBO exchange.</p>
+
+  <h3>3a — Identity Provider (trust the connector's tokens)</h3>
+  <ol class="steps">
+    <li><b>Settings → Security &amp; Access → Identity Providers</b> → <b>+</b> (Add Identity Provider).</li>
+    <li>Fill in:
+      <div class="tbl"><table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Enabled</td><td>on</td></tr>
+        <tr><td>Provider Name</td><td><code>entra-copilot</code></td></tr>
+        <tr><td>Issuer URL</td><td><code>https://login.microsoftonline.com/<span class="v" data-v="tenant"></span>/v2.0</code></td></tr>
+        <tr><td>Allowed Audiences</td><td><code>api://<span class="v" data-v="agentsvc"></span></code> <b>and</b> <code><span class="v" data-v="agentsvc"></span></code> — add both spellings</td></tr>
+        <tr><td>JWKS URI</td><td><code>https://login.microsoftonline.com/<span class="v" data-v="tenant"></span>/discovery/v2.0/keys</code></td></tr>
+        <tr><td>Resolve Token To</td><td><b>TrueFoundry user</b>. Email Claim: <code>preferred_username</code>. Team Claim: <code>groups</code> (the form requires one; unused here).</td></tr>
+      </table></div>
+    </li>
+    <li><b>Save</b>.</li>
+  </ol>
+  <div class="callout warn"><b>On the email claim.</b> Entra v2 delegated tokens carry the UPN in <code>preferred_username</code>; <code>email</code> is present only if you add it as an optional claim. The gateway must resolve the signed-in user to an existing TrueFoundry user, so the UPN of whoever tests in Copilot Studio must match a TrueFoundry user's email. If your UPNs differ from your TrueFoundry emails, add the <code>email</code> optional claim to <code>agent-service</code> (Token configuration → Add optional claim → Access → email) and set Email Claim to <code>email</code>.</div>
+
+  <h3>3b — Agent Registry entry (the mirror of the Copilot Studio agent)</h3>
+  <ol class="steps">
+    <li><b>Agent Registry</b> in the left nav → <b>Create New Agent → Integrate a Remote Agent</b>.</li>
+    <li><b>Metadata</b>: Agent Name <code><span class="v" data-v="agentname"></span></code>, Description <code>Mirror identity for the Copilot Studio demo agent (OBO via Power Apps connector)</code>. <b>Next</b>.</li>
+    <li><b>Agent Identity</b>: choose <b>Identity provider-backed</b>. Identity Provider: <code>entra-copilot</code>. Subject value: <code><span class="v" data-v="agentclient"></span></code> — the <b>agent-client</b> ID, because that is what arrives as <code>azp</code>. <b>Next</b>.</li>
+    <li><b>Config</b>: <b>Embedded</b> (Microsoft hosts the agent; the gateway sits in front of its tools, not in front of the agent). <b>Next</b>.</li>
+    <li><b>Access Control</b>: add yourself (and any teammates who will test in Copilot Studio) as collaborators with role <b>Agent Access</b>. This grant doubles as "whom the agent may act for" — a user without it gets a 403 at the gateway. Optionally enable Owner and pick your team. <b>Submit</b>.</li>
+  </ol>
+
+  <h3>3c — Store the agent-service secret</h3>
+  <ol class="steps">
+    <li><b>Secrets</b> in the left nav → open or create a Secret Group, e.g. <code>copilot-obo</code>.</li>
+    <li><b>+ Add Secret</b>: key <code>AGENT_SERVICE_CLIENT_SECRET</code>, value = the agent-service secret you copied in Phase 1b step 7. <b>Save</b>.</li>
+    <li>Copy the secret's FQN (looks like <code>tfy-secret://&lt;tenant&gt;:copilot-obo:AGENT_SERVICE_CLIENT_SECRET</code>).</li>
+  </ol>
+
+  <h3>3d — Register the MCP server with the OBO exchange</h3>
+  <ol class="steps">
+    <li><b>MCP Gateway</b> in the left nav → <b>Add Server</b> → <b>Connect any Remote MCP Server</b>.</li>
+    <li>Fill in:
+      <div class="tbl"><table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Name</td><td><code>obo-demo</code></td></tr>
+        <tr><td>Description</td><td><code>Demo tools behind Entra OBO</code></td></tr>
+        <tr><td>URL</td><td><code><span class="v" data-v="svcurl"></span>/mcp</code> — your service, <b>not</b> the gateway</td></tr>
+        <tr><td>Auth Data</td><td><b>OAuth2</b></td></tr>
+        <tr><td>OAuth Provider</td><td><b>Microsoft Entra</b></td></tr>
+        <tr><td>Grant Type</td><td><b>JWT Bearer</b> (on-behalf-of) — <i>not</i> Token Exchange, which is the RFC 8693 shape Entra rejects</td></tr>
+        <tr><td>Token URL</td><td><code>https://login.microsoftonline.com/<span class="v" data-v="tenant"></span>/oauth2/v2.0/token</code></td></tr>
+        <tr><td>Client ID</td><td><code><span class="v" data-v="agentsvc"></span></code> — agent-service; must equal the inbound token's audience</td></tr>
+        <tr><td>Client Secret</td><td>the FQN from 3c</td></tr>
+        <tr><td>Scopes</td><td><code>api://<span class="v" data-v="mcpapi"></span>/Tool.Write</code> — names the <b>destination</b></td></tr>
+      </table></div>
+    </li>
+    <li><b>Collaborators → + Add Collaborators</b> → switch the picker to the <b>Agents</b> tab → pick <code><span class="v" data-v="agentname"></span></code> → role <b>MCP Server User</b>. Keep yourself as MCP Server Manager. <b>Save</b>.</li>
+    <li>Open the new server → <b>How To Use</b> tab. Copy the gateway URL. Split it: the host → worksheet <i>Gateway host</i>; everything from the first <code>/</code> onward → worksheet <i>Gateway path</i>.</li>
+  </ol>
+  <div class="callout warn">If you ever rotate the agent-service secret, re-save this MCP server entry. Credentials bind on save; updating only the stored secret leaves the gateway using the old one.</div>
+</section>
+
+<section class="phase" id="p4">
+  <div class="phase-head"><span class="num">4</span><h2>The custom connector</h2><span class="console pa">Power Apps</span></div>
+  <p class="where">Build it in Power Apps, <b>not</b> Copilot Studio's MCP onboarding wizard — the wizard has no on-behalf-of switch, so the user's identity would not carry through.</p>
+
+  <h3>4a — Save this definition as <code>obo-demo-connector.yaml</code></h3>
+  <pre><button class="copy" data-copy="swagger" type="button">Copy</button><code id="swagger">swagger: '2.0'
+info:
+  title: OBO Demo MCP
+  description: Demo MCP tools via TrueFoundry MCP Gateway (on-behalf-of)
+  version: '1.0.0'
+host: <span class="v" data-v="gwhost"></span>
+basePath: /
+schemes: [https]
+paths:
+  <span class="v" data-v="gwpath"></span>:
+    post:
+      summary: OBO demo MCP server
+      operationId: InvokeMCP
+      x-ms-agentic-protocol: mcp-streamable-1.0
+      responses:
+        '200':
+          description: Success</code></pre>
+  <div class="callout warn">Keep <code>basePath: /</code> and the whole path under <code>paths:</code>. Folding the path into <code>basePath</code> gives the same URL but puts the operation at the root path, which Power Platform does not register as an MCP operation. The connector imports, the connection succeeds, and the tool list is silently empty.</div>
+  <div class="callout warn"><b>Prefer importing this file over building the connector from blank.</b> The visual editor's "Add default response" generates <code>responses: default: schema: type: string</code>, which makes the runtime deserialise the MCP event stream as a string and breaks the handshake in Copilot Studio even though the Test tab passes. If you do build by hand, open the Swagger editor and make the response exactly <code>'200': {description: Success}</code> with no <code>schema</code>, and keep <code>parameters</code> empty.</div>
+
+  <h3>4b — Import it</h3>
+  <ol class="steps">
+    <li>Open <a href="https://make.powerapps.com" target="_blank" rel="noopener">make.powerapps.com</a>. Top-right <b>Environment</b> picker → choose the <b>same environment</b> your Copilot Studio agent will live in.</li>
+    <li>Left nav <b>… More → Discover all → Custom connectors</b> (pin it). Click <b>+ New custom connector → Import an OpenAPI file</b>.</li>
+    <li>Connector name: <code>OBO Demo MCP</code>. <b>Import</b> → pick the YAML → <b>Continue</b>.</li>
+    <li><b>1. General</b> tab: Host should read <code><span class="v" data-v="gwhost"></span></code>, Base URL <code>/</code>. Leave the rest. Click <b>Security →</b>.</li>
+  </ol>
+
+  <h3>4c — Security tab</h3>
+  <div class="tbl"><table>
+    <tr><th>Field</th><th>Value</th></tr>
+    <tr><td>Authentication type</td><td><b>OAuth 2.0</b></td></tr>
+    <tr><td>Identity Provider</td><td><b>Azure Active Directory</b> (Microsoft Entra ID)</td></tr>
+    <tr><td>Client ID</td><td><code><span class="v" data-v="agentclient"></span></code> — agent-client</td></tr>
+    <tr><td>Client secret</td><td>the agent-client secret from Phase 1c step 3 — <b>you paste this one</b></td></tr>
+    <tr><td>Authorization URL</td><td><code>https://login.microsoftonline.com</code></td></tr>
+    <tr><td>Tenant ID</td><td><code><span class="v" data-v="tenant"></span></code></td></tr>
+    <tr><td><b>Resource URL</b></td><td><code>api://<span class="v" data-v="agentsvc"></span></code> — agent-service. Not your MCP server, not the gateway.</td></tr>
+    <tr><td><b>Enable on-behalf-of login</b></td><td><b>true</b></td></tr>
+    <tr><td>Scope</td><td><code>api://<span class="v" data-v="agentsvc"></span>/access_as_user offline_access</code></td></tr>
+  </table></div>
+  <div class="callout warn"><b>Resource URL is the field to get right.</b> Point it at mcp-api and you have built passthrough instead. And only one resource may appear in Scope — Entra derives the audience from the resource of the requested scopes and rejects a request naming two; <code>offline_access</code> is resource-agnostic so it is fine alongside.</div>
+  <ol class="steps">
+    <li>Click <b>Definition →</b>. Under Actions you should see one action, <code>InvokeMCP</code>. Toggle <b>Swagger editor</b> on (top toolbar) and confirm <code>x-ms-agentic-protocol: mcp-streamable-1.0</code> is still on the operation — some saves drop it.</li>
+    <li>Click <b>✓ Create connector</b> (top right). Wait for the save.</li>
+    <li>Back on the <b>Security</b> tab, a read-only <b>Redirect URL</b> now shows. It must be <code>https://global.consent.azure-apim.net/redirect</code>, which you already registered on agent-client in Phase 1c. If it shows something else, add that exact URL to agent-client → Authentication → Web redirect URIs.</li>
+  </ol>
+
+  <h3>4d — Test and share</h3>
+  <div class="callout warn"><b>Do these steps in Power Apps, before Copilot Studio ever sees the connector.</b> When Copilot Studio adds a custom connector to an agent it rewrites the connector's role assignments and creates the connection itself; done in the wrong order this can lock the maker out of their own connector and leave a connection that never obtains a token ("Unable to connect", with nothing in the gateway trace). Create the connection here, prove it with Test operation, then reuse that connection in Phase 5.</div>
+  <ol class="steps">
+    <li><b>5. Test</b> tab → <b>+ New connection</b>. Expect the account picker and then either a short <b>consent card</b> or, if admin consent already covers it, an immediate "Connected". A full sign-in form with a password prompt means OBO is not active — recheck 4c.</li>
+    <li>Still on Test, select the connection, click <code>InvokeMCP</code> under Operations, then <b>Test operation</b>. The request URL is a <code>…powerplatform.com/connectors/runtime/invoke/…</code> proxy ending in your gateway path — that is normal. The response should be a <b>400</b> with <code>Invalid JSON-RPC request</code>: the empty body is rejected by the gateway's protocol layer, which only runs <i>after</i> authentication passed. A <b>401</b> here means the token did not resolve at the gateway (see Troubleshooting).</li>
+    <li>Back on the connector list, click <b>⋯ → Share</b> next to <code>OBO Demo MCP</code>. Add the users who will test the agent with <b>Can view</b>; makers who will edit it get <b>Can edit</b>. Not needed for yourself — the owner can always use their own connector.</li>
+  </ol>
+</section>
+
+<section class="phase" id="p5">
+  <div class="phase-head"><span class="num">5</span><h2>The agent</h2><span class="console cs">Copilot Studio</span></div>
+  <p class="where">Open <a href="https://copilotstudio.microsoft.com" target="_blank" rel="noopener">copilotstudio.microsoft.com</a>. Top-right environment picker → the same environment as the connector.</p>
+  <ol class="steps">
+    <li>Left nav <b>Create → + New agent</b>. Either describe it or click <b>Skip to configure</b>. Name: <code>OBO Demo</code>. Instructions: <code>You have tools from the OBO Demo MCP server. Use them whenever a user asks to add, subtract, echo text, or asks who they are. Always call whoami when asked about identity; never guess.</code> Click <b>Create</b>.</li>
+    <li><b>Settings</b> (top right) → <b>Generative AI</b> → Orchestration: <b>Generative</b>. <b>Save</b>. Do this <i>before</i> attaching the tool — with classic orchestration the agent never calls MCP tools; the tool appears attached and is silently ignored.</li>
+    <li>Top tab <b>Tools → + Add a tool</b>. Your connector appears under <b>Model Context Protocol</b> (Copilot Studio files tools by protocol; the <code>x-ms-agentic-protocol</code> flag is what puts it there). Search <code>OBO Demo MCP</code> → select it. Do not use <b>New tool → Model Context Protocol</b>, which is the wizard that builds its own connector without on-behalf-of.</li>
+    <li>When asked for a connection, choose the <b>existing</b> connection you created in Power Apps (Phase 4d) rather than creating a new one. Then <b>Add to agent</b>.</li>
+    <li>Open the tool from the Tools list. Under its tools you should see <code>add</code>, <code>subtract</code>, <code>echo</code> and <code>whoami</code>. Empty list → see Troubleshooting row 1.</li>
+    <li>Still in the tool's settings, confirm end-user authentication is set so each user connects with their own credentials (the default for OAuth connectors), and <b>Save</b>.</li>
+  </ol>
+  <div class="callout warn">Attach only one connector to this agent. An agent with both a passthrough and an OBO connector sees two sets of identically-named tools and picks between them unpredictably.</div>
+</section>
+
+<section class="phase" id="p6">
+  <div class="phase-head"><span class="num">6</span><h2>Prove the chain</h2><span class="console cs">Copilot Studio</span> <span class="console tf">TrueFoundry</span></div>
+  <p class="where">Use the <b>Test</b> pane on the right of the agent.</p>
+  <ol class="steps">
+    <li>Type <code>Who am I according to your tools?</code> The agent should call <code>whoami</code> and report your UPN, name and object ID, with <code>mode: delegated</code>, <code>aud</code> = mcp-api and <code>actor_app</code> = agent-service. That is the whole OBO story in one tool result: your identity travelled two exchanges and arrived intact, and the app that last exchanged was the gateway's agent-service.</li>
+    <li>Type <code>Add 41 and 1</code>. Expect <code>42</code>.</li>
+    <li>In TrueFoundry, open the MCP server <code>obo-demo</code> → its request logs / audit. Each call should show <b>both</b> the agent <code><span class="v" data-v="agentname"></span></code> and your user as the caller.</li>
+    <li>Negative test: in the Agent Registry entry's Access Control, remove your <b>Agent Access</b> row and save. Ask the agent to add numbers again → it should fail with a gateway <b>403</b>. Restore the grant.</li>
+    <li>Negative test #2: in Phase 3d's MCP server, temporarily remove the agent collaborator → 403 again. Restore it.</li>
+  </ol>
+  <p>Those two 403s are the point of the exercise. The connector's token is audienced to agent-service, which your MCP server refuses outright, so the only route to the tools is through the gateway — and the gateway will only pass calls from a registered agent, acting for a user that agent is allowed to act for.</p>
+</section>
+
+<section class="phase" id="p7">
+  <div class="phase-head"><span class="num">7</span><h2>Troubleshooting</h2></div>
+  <div class="tbl"><table>
+    <tr><th>Symptom</th><th>Cause</th></tr>
+    <tr><td>No tools appear in the agent</td><td>Operation is at the root path, or <code>x-ms-agentic-protocol</code> was dropped on save, or orchestration is not Generative. All three look identical.</td></tr>
+    <tr><td>Interactive sign-in on every call</td><td><code>fe053c5f-…</code> (Azure API Connections) not listed under agent-service → Expose an API → Authorized client applications.</td></tr>
+    <tr><td>Users re-prompted roughly hourly</td><td><code>offline_access</code> not requested or not admin-consented.</td></tr>
+    <tr><td>401 from the gateway before any upstream call</td><td>Token validated but resolved to no principal. Check the issuer ends in <code>/v2.0</code>, Allowed Audiences list agent-service (both spellings), the registry Subject value is the agent-client ID, and the signed-in user's UPN matches a TrueFoundry user.</td></tr>
+    <tr><td>403 from the gateway</td><td>The agent is not an MCP Server User on the server, or the user has no Agent Access on the agent.</td></tr>
+    <tr><td><code>AADSTS50013</code></td><td>Inbound token's audience is not the exchanging client. Connector Resource URL and gateway Client ID must both be agent-service.</td></tr>
+    <tr><td><code>AADSTS65001</code></td><td>Admin consent missing (Phase 1d).</td></tr>
+    <tr><td>MCP server returns 401 after the gateway accepted the call</td><td>Gateway Scopes not pointing at <code>api://&lt;mcp-api&gt;/Tool.Write</code>; or the server's <code>MCP_API_APP_ID</code> env var is wrong; or mcp-api is still issuing v1 tokens (<code>requestedAccessTokenVersion</code> not 2, so the issuer is <code>sts.windows.net</code>).</td></tr>
+    <tr><td><code>whoami</code> shows <code>mode: application</code> and no user</td><td>An Application permission was granted where a Delegated one was needed.</td></tr>
+    <tr><td>Full sign-in page instead of a consent card when connecting</td><td>Enable on-behalf-of login is off on the connector, or Resource URL points somewhere other than agent-service.</td></tr>
+    <tr><td>Worked, then broke after rotating a secret</td><td>Re-save the MCP server entry in TrueFoundry; credentials bind on save.</td></tr>
+    <tr><td>Saving the MCP server in TrueFoundry fails with <code>AADSTS5002726 … unsupported token header</code></td><td>Expected when testing from the TrueFoundry UI: the gateway tried to exchange your <i>TrueFoundry session token</i>, which Entra does not recognise. The Auth Data is fine. Test with a real Entra token instead (Azure CLI against <code>api://&lt;agent-service&gt;/access_as_user</code>, with the CLI app id <code>04b07795-8ddb-461a-bbee-02f9e1bf7b46</code> temporarily mapped on the agent), or proceed to Copilot Studio.</td></tr>
+    <tr><td>Server log: <code>missing required scopes (has ['Tool.write'…], requires ['Tool.Write'])</code></td><td>The scope on mcp-api was created with different casing. Entra matches scope names case-insensitively and returns the stored spelling; the server compares exactly. Set <code>REQUIRED_SCOPE</code> on the server to the spelling Entra returns, or recreate the scope.</td></tr>
+    <tr><td>Power Apps: "You do not have permissions to edit this connector" right after adding it to an agent</td><td>Copilot Studio rewrote the connector's role assignments. Re-grant yourself with <code>Set-AdminPowerAppConnectorRoleAssignment … -RoleName CanEdit</code> from the PowerApps admin PowerShell module, or import a fresh connector and follow the 4d ordering. System Administrator on the environment does not by itself restore maker-portal edit rights.</td></tr>
+    <tr><td>Copilot Studio: "Unable to connect" and nothing in the gateway trace</td><td>The connector runtime failed before calling out, usually a connection created by Copilot Studio on a connector whose ownership just changed. Recreate the connection from the Power Apps Test tab as the connector owner and confirm with Test operation (expect a 400 <code>Invalid JSON-RPC request</code>), then re-add the tool choosing that connection.</td></tr>
+  </table></div>
+</section>
+
+<section class="phase" id="p8">
+  <div class="phase-head"><span class="num">8</span><h2>Variant: agent hosted in your own environment</h2><span class="console entra">Entra</span> <span class="console tf">TrueFoundry</span></div>
+  <p class="where">For customers who cannot use Copilot Studio (on-prem, no inbound path from Microsoft's cloud). Same MCP server, same gateway setup, same governance; the agent runs as a TrueFoundry Service in the customer's cluster and carries its own Entra identity. Code: the <code>mock-agent/</code> folder.</p>
+
+  <h3>What changes, what doesn't</h3>
+  <p>Phases 1–3 stay as they are: mcp-api, agent-service, the Identity Provider and the MCP server registration are reused unchanged, and the gateway still exchanges as agent-service. Phases 4–5 (Power Apps and Copilot Studio) are replaced by the mock agent. Because this agent is custom-hosted it can do what Copilot Studio cannot: present its <b>own</b> Entra identity to the gateway, in a second header, alongside the user's.</p>
+  <p>Every call carries two bearer tokens, both audienced to agent-service: the user's in <code>Authorization</code> (obtained by device-code sign-in) and the agent's in <code>x-tfy-agent-authorization</code> (client credentials). The gateway resolves the agent from the second token's <code>azp</code>, the user from the first, checks the agent may act for that user and may reach the server, then runs the same OBO exchange.</p>
+
+  <h3>8a — Entra: one extra app registration, <code>mock-agent</code></h3>
+  <ol class="steps">
+    <li><b>App registrations → + New registration</b>. Name <code>mock-agent</code>, single tenant, no redirect URI → <b>Register</b>. Copy the Application (client) ID.</li>
+    <li><b>Authentication → Advanced settings → Allow public client flows: Yes</b> → Save. Device-code sign-in requires it.</li>
+    <li><b>API permissions → + Add a permission → APIs my organization uses → agent-service → Delegated → <code>access_as_user</code></b>; and <b>Microsoft Graph → Delegated → <code>offline_access</code></b>. Then <b>Grant admin consent</b>.</li>
+    <li>On <b>agent-service → Expose an API → Authorized client applications → + Add</b>: the mock-agent client ID, tick <code>access_as_user</code>.</li>
+    <li><b>Certificates &amp; secrets → + New client secret</b> → copy the value. It goes into a TrueFoundry Secret in 8b; it is the agent's own credential.</li>
+  </ol>
+
+  <h3>8b — TrueFoundry</h3>
+  <ol class="steps">
+    <li><b>Secrets</b>: add <code>AGENT_CLIENT_SECRET</code> with the value from 8a step 5; copy its <code>tfy-secret://</code> FQN.</li>
+    <li><b>Agent Registry → Create New Agent → Integrate a Remote Agent</b>: name <code>netapp-mock-agent</code>; Identity <b>Identity provider-backed</b>, provider <code>entra-copilot</code>, <b>Subject value = the mock-agent client ID</b>; Config <b>Embedded</b>; Access Control: the users who will sign in, as <b>Agent Access</b>. (Or add the ID as a second mapping on the Phase 3b agent.)</li>
+    <li><b>MCP Gateway → your MCP server (<code>aga-obo-demo</code>) → Collaborators</b>: add <code>agent:netapp-mock-agent</code> as <b>MCP Server User</b>.</li>
+    <li>The model the agent will use (e.g. <code>openai-main</code>) → Collaborators: add the agent and the users. Or set <code>LLM_GATEWAY_API_KEY</code> in the deploy to a TrueFoundry API key and skip this.</li>
+    <li>Deploy from the <code>mock-agent/</code> folder with <code>python deploy.py</code> (see its docstring for the env vars; <code>AGENT_CLIENT_SECRET_FQN</code> is the secret reference, never the value). Open <code>https://&lt;HOST&gt;</code>.</li>
+  </ol>
+
+  <h3>8c — Demo script</h3>
+  <ol class="steps">
+    <li>Sign in with Microsoft (device code). Click <b>Show token claims</b>: two tokens, both <code>aud</code> = agent-service; the user's carries <code>preferred_username</code>, the agent's carries <code>azp</code> = mock-agent and no user.</li>
+    <li>Ask <code>Who am I according to your tools?</code> The trace shows <code>whoami</code> through the gateway; the result names the signed-in user with <code>mode: delegated</code>, <code>actor_app</code> = agent-service, <code>aud</code> = mcp-api.</li>
+    <li>TrueFoundry traces for the server: every call shows agent = netapp-mock-agent <b>and</b> the user.</li>
+    <li>Remove the user's Agent Access on the agent → next tool call is a gateway <b>403</b>. Restore. Remove the agent's MCP Server User role → 403 again. The agent and the MCP server were not touched; the gateway is the control point.</li>
+    <li>Optional: sign in as a second user without Agent Access → 403 on the first call. Same agent, different person, different answer.</li>
+  </ol>
+  <div class="callout warn"><b>Why this is the stronger demo.</b> With Copilot Studio the agent's Entra identity never reaches the gateway; a connector app stands in for it. Here the agent's own app ID arrives in <code>azp</code> of the agent token, so the registry mapping, the audit trail and the 403s are about the actual agent, not a proxy. That is the Agent ID story the customer asked for.</div>
+
+  <footer>
+    Grounded in TrueFoundry docs: <a href="https://www.truefoundry.com/docs/agent-platform/agent-governance/truefoundry-implementation/copilot-studio-agents" target="_blank" rel="noopener">Govern Copilot Studio agents calling MCP servers</a> (Part 2), <a href="https://www.truefoundry.com/docs/platform/identity-providers" target="_blank" rel="noopener">Identity Providers</a>, <a href="https://www.truefoundry.com/docs/agent-platform/agent-governance/agent-registry" target="_blank" rel="noopener">Agent Registry</a>, <a href="https://www.truefoundry.com/docs/ai-gateway/agents/agent-identity" target="_blank" rel="noopener">Agent and its Identity</a> (the two-header pattern in Phase 8), <a href="https://www.truefoundry.com/docs/ai-gateway/mcp/mcp-server-oauth-azure-obo" target="_blank" rel="noopener">Azure Entra OBO for MCP</a>, <a href="https://www.truefoundry.com/docs/mcp-server-deployment/deploy-mcp-server-from-code" target="_blank" rel="noopener">Deploy MCP server from code</a>; and Microsoft Learn: <a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-add-existing-server-to-agent" target="_blank" rel="noopener">Connect your agent to an existing MCP server</a>. Menu labels in the Entra, Power Apps and Copilot Studio portals shift between releases; if a label here is not on your screen, look for the nearest equivalent rather than a different setting.
+  </footer>
+</section>
+
+</main>
+</div>
+</div>
+
+<script>
+(function(){
+  var KEY='copilot-obo-runbook-values';
+  var inputs=document.querySelectorAll('input[data-key]');
+  var saved={};
+  try{ saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{}; }catch(e){ saved={}; }
+  var placeholders={tenant:'<tenant-id>',mcpapi:'<mcp-api-app-id>',agentsvc:'<agent-service-app-id>',agentclient:'<agent-client-app-id>',svcurl:'https://<your-service-host>',gwhost:'<gateway-host>',gwpath:'/<gateway-path-for-this-server>',agentname:'<agent-name>'};
+  function render(){
+    var vals={};
+    inputs.forEach(function(i){ vals[i.dataset.key]=i.value.trim(); });
+    document.querySelectorAll('.v[data-v]').forEach(function(el){
+      var k=el.dataset.v, v=vals[k];
+      if(v){ el.textContent=v; el.classList.remove('empty'); }
+      else { el.textContent=placeholders[k]||('<'+k+'>'); el.classList.add('empty'); }
+    });
+  }
+  inputs.forEach(function(i){
+    if(saved[i.dataset.key]) i.value=saved[i.dataset.key];
+    i.addEventListener('input',function(){
+      var out={}; inputs.forEach(function(x){ out[x.dataset.key]=x.value.trim(); });
+      try{ localStorage.setItem(KEY,JSON.stringify(out)); }catch(e){}
+      render();
+    });
+  });
+  render();
+  function selectAll(el){ try{ var r=document.createRange(); r.selectNodeContents(el); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);}catch(e){} }
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var el=document.getElementById(btn.dataset.copy); if(!el) return;
+      var text=el.innerText;
+      function done(ok){ btn.textContent=ok?'Copied':'Select & copy'; setTimeout(function(){btn.textContent='Copy';},1600); }
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){done(true);},function(){ selectAll(el); done(false); });
+      } else { selectAll(el); done(false); }
+    });
+  });
+})();
+</script>

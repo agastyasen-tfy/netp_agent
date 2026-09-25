@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock Agent</title>
+<style>
+:root{--bg:#F4F5F7;--surface:#fff;--ink:#1B222E;--muted:#5D6675;--line:#DCE0E6;--accent:#1F5F9E;--soft:#E8EFF8;--ok:#1B7F4B;--bad:#B3361F;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;--font:system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#12161D;--surface:#1A2029;--ink:#E7EAEF;--muted:#9AA4B3;--line:#2C3441;--accent:#7FB0E8;--soft:#1F2A3A;--ok:#5BC88A;--bad:#F0906A}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font)}
+header{padding:18px 24px;border-bottom:1px solid var(--line);background:var(--surface);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;font-weight:600}
+header .sub{color:var(--muted);font-size:13px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;max-width:1200px;margin:0 auto;padding:20px}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 10px;font-weight:600}
+#chat{display:flex;flex-direction:column;min-height:60vh}
+#log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:4px 2px}
+.msg{max-width:80%;padding:10px 14px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
+.msg.user{align-self:flex-end;background:var(--accent);color:#fff}
+.msg.agent{align-self:flex-start;background:var(--soft)}
+.msg.sys{align-self:center;color:var(--muted);font-size:13px;background:none}
+.trace{align-self:flex-start;font-family:var(--mono);font-size:12px;border-left:3px solid var(--line);padding:6px 10px;color:var(--muted);max-width:90%;white-space:pre-wrap}
+.trace b{color:var(--ink);font-weight:600}
+.trace .ok{color:var(--ok)}.trace .bad{color:var(--bad)}
+form{display:flex;gap:8px;margin-top:12px}
+input[type=text]{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+button{padding:9px 14px;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:8px;font:inherit;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent)}
+button:disabled{opacity:.5;cursor:default}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+.kv dt{color:var(--muted)}.kv dd{margin:0;font-family:var(--mono);font-size:12px;word-break:break-all}
+.code{font-family:var(--mono);font-size:22px;letter-spacing:.12em;text-align:center;padding:10px;background:var(--soft);border-radius:8px;margin:8px 0}
+.stack{display:flex;flex-direction:column;gap:14px}
+.pill{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)}.pill.off{color:var(--muted)}
+a{color:var(--accent)}
+.hint{color:var(--muted);font-size:13px;margin:6px 0 0}
+</style>
+</head>
+<body>
+<header><h1 id="title">Mock Agent</h1><span class="sub">Entra agent identity → TrueFoundry MCP Gateway → on-behalf-of → MCP server</span></header>
+<div class="wrap">
+  <div class="card" id="chat">
+    <h2>Chat</h2>
+    <div id="log"><div class="msg sys">Sign in on the right, then try: “Who am I according to your tools?” or “Add 41 and 1”.</div></div>
+    <form id="f"><input type="text" id="q" placeholder="Message the agent…" autocomplete="off" disabled><button id="send" disabled>Send</button></form>
+  </div>
+  <div class="stack">
+    <div class="card" id="auth">
+      <h2>User <span id="pill" class="pill off">signed out</span></h2>
+      <div id="authbody"></div>
+    </div>
+    <div class="card">
+      <h2>What the gateway sees</h2>
+      <dl class="kv" id="ids"></dl>
+      <p class="hint">Two bearer tokens per call: the user's in <code>Authorization</code>, the agent's in <code>x-tfy-agent-authorization</code>. Both are audienced to agent-service; the gateway resolves both and exchanges the user's for an mcp-api token.</p>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" id="btn-flow" disabled>Show token flow</button><button class="ghost" id="btn-whoami" disabled>Call whoami directly</button></div>
+      <pre id="identout" style="font-size:12px;white-space:pre-wrap;margin:10px 0 0;display:none"></pre>
+    </div>
+  </div>
+</div>
+<div class="wrap" id="flowwrap" style="display:none;padding-top:0"><div class="card" style="grid-column:1/-1">
+  <h2>Token flow <label style="float:right;font-weight:400;text-transform:none;letter-spacing:0"><input type="checkbox" id="showraw"> show raw JWTs (signature hidden)</label></h2>
+  <div class="flow" id="flow"></div>
+  <p class="hint" style="margin-top:12px">Left two: what the agent sends the gateway. Right: what the MCP server actually received after the gateway's on-behalf-of exchange, as reported by <code>whoami</code>. The agent never holds that third token. Watch <code>aud</code> move from agent-service to mcp-api while the user stays the same and <code>azp</code> becomes agent-service.</p>
+</div></div>
+<style>
+.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.flow{grid-template-columns:1fr}}
+.tok{border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}
+.tok h3{margin:0 0 4px;font-size:14px;font-weight:600}
+.tok .arrow{font-size:12px;color:var(--muted);margin-bottom:8px}
+.tok dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px;margin:0}
+.tok dt{color:var(--muted)}.tok dd{margin:0;font-family:var(--mono);font-size:11.5px;word-break:break-all}
+.tok dd.hi{color:var(--accent);font-weight:600}
+.tok pre{font-size:10.5px;white-space:pre-wrap;word-break:break-all;background:var(--soft);padding:8px;border-radius:6px;margin:10px 0 0;max-height:160px;overflow:auto}
+.tok .err{color:var(--bad);font-size:12.5px}
+</style>
+<script>
+const $=s=>document.querySelector(s);
+const log=$('#log'), q=$('#q'), send=$('#send');
+let history=[], status=null, poll=null;
+function add(cls,text){const d=document.createElement('div');d.className='msg '+cls;d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+function addTrace(steps){if(!steps||!steps.length)return;const d=document.createElement('div');d.className='trace';
+  d.innerHTML=steps.map(s=>`<b>${s.tool}</b>(${JSON.stringify(s.args)}) → <span class="${s.ok?'ok':'bad'}">${escapeHtml(s.result)}</span> <i>${s.ms}ms</i>`).join('\n');log.appendChild(d);log.scrollTop=log.scrollHeight}
+function escapeHtml(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+async function api(path,opts){const r=await fetch(path,Object.assign({headers:{'Content-Type':'application/json'}},opts||{}));const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||j.error||r.statusText);return j}
+function renderIds(){$('#ids').innerHTML=`<dt>Agent</dt><dd>${status.agent_name}</dd><dt>Agent app (azp)</dt><dd>${status.agent_client_id}</dd><dt>Gateway audience</dt><dd>${status.gateway_audience}</dd><dt>MCP gateway</dt><dd>${status.mcp_gateway_url}</dd><dt>Model</dt><dd>${status.llm_model}</dd>`;document.title=status.agent_name;$('#title').textContent=status.agent_name}
+function renderAuth(){const b=$('#authbody'),p=$('#pill');const on=status.login_state==='signed_in';
+  q.disabled=send.disabled=$('#btn-flow').disabled=$('#btn-whoami').disabled=!on;
+  if(on){p.textContent='signed in';p.className='pill ok';b.innerHTML=`<div class="kv" style="display:grid"><dt>User</dt><dd>${status.user.preferred_username||''}</dd><dt>Name</dt><dd>${status.user.name||''}</dd><dt>oid</dt><dd>${status.user.oid||''}</dd></div><div style="margin-top:10px"><button class="ghost" id="btn-out">Sign out</button></div>`;$('#btn-out').onclick=async()=>{await api('/api/logout',{method:'POST'});history=[];refresh()}}
+  else if(status.login_state==='pending'&&status.device_flow){p.textContent='waiting for sign-in';p.className='pill off';b.innerHTML=`<p style="margin:0">Open <a href="${status.device_flow.verification_uri}" target="_blank" rel="noopener">${status.device_flow.verification_uri}</a> and enter:</p><div class="code">${status.device_flow.user_code}</div><p class="hint">Sign in as a user who has <b>Agent Access</b> on this agent in TrueFoundry.</p>`}
+  else{p.textContent=status.login_state==='error'?'error':'signed out';p.className='pill off';b.innerHTML=`${status.login_error?`<p class="hint" style="color:var(--bad)">${escapeHtml(status.login_error)}</p>`:''}<button id="btn-in">Sign in with Microsoft</button><p class="hint">Device-code sign-in: the agent never sees your password.</p>`;$('#btn-in').onclick=async()=>{await api('/api/login/start',{method:'POST'});refresh();poll=setInterval(refresh,2500)}}
+  if(on&&poll){clearInterval(poll);poll=null}}
+async function refresh(){status=await api('/api/status');renderIds();renderAuth()}
+$('#f').onsubmit=async e=>{e.preventDefault();const text=q.value.trim();if(!text)return;q.value='';add('user',text);history.push({role:'user',content:text});send.disabled=true;const thinking=add('sys','thinking…');
+  try{const r=await api('/api/chat',{method:'POST',body:JSON.stringify({messages:history})});thinking.remove();addTrace(r.trace);add('agent',r.reply);history.push({role:'assistant',content:r.reply})}
+  catch(err){thinking.remove();add('sys','error: '+err.message)}finally{send.disabled=false;q.focus()}};
+let flowData=null;
+function short(v){if(v==null)return '—';if(typeof v==='number'&&v>1e9)return new Date(v*1000).toLocaleTimeString();return String(v)}
+function tokCard(title,arrow,header,claims,raw,err,hiKeys){
+  const rows=Object.entries(claims||{}).map(([k,v])=>`<dt>${k}</dt><dd class="${hiKeys.includes(k)?'hi':''}">${escapeHtml(short(v))}</dd>`).join('');
+  const hdr=header?`<dt>header</dt><dd>${escapeHtml(Object.entries(header).filter(([,v])=>v).map(([k,v])=>k+'='+v).join(' '))}</dd>`:'';
+  return `<div class="tok"><h3>${title}</h3><div class="arrow">${arrow}</div>${err?`<div class="err">${escapeHtml(err)}</div>`:`<dl>${hdr}${rows}</dl>`}${raw&&$('#showraw').checked?`<pre>${escapeHtml(raw)}</pre>`:''}</div>`}
+function renderFlow(){if(!flowData)return;const f=flowData;
+  const dsClaims=f.downstream&&typeof f.downstream==='object'?{aud:f.downstream.aud,azp:f.downstream.actor_app,scp:f.downstream.scp,preferred_username:f.downstream.user,oid:f.downstream.user_oid,iss:f.downstream.iss,exp:f.downstream.exp,mode:f.downstream.mode}:null;
+  $('#flow').innerHTML=
+    tokCard('1 · User token','agent → gateway, <code>Authorization</code>',f.user_token.header,f.user_token.claims,f.user_token.raw_masked,null,['aud','preferred_username','azp'])+
+    tokCard('2 · Agent token','agent → gateway, <code>x-tfy-agent-authorization</code>',f.agent_token.header,f.agent_token.claims,f.agent_token.raw_masked,null,['aud','azp'])+
+    tokCard('3 · Downstream token','gateway → MCP server, after OBO exchange (from <code>whoami</code>)',null,dsClaims,null,f.downstream_error?('MCP server unreachable: '+f.downstream_error):(dsClaims?null:'whoami returned: '+JSON.stringify(f.downstream)),['aud','preferred_username','azp']);}
+$('#btn-flow').onclick=async()=>{const w=$('#flowwrap');w.style.display='grid';$('#flow').innerHTML='<div class="tok">fetching three tokens…</div>';try{flowData=await api('/api/tokenflow');renderFlow();w.scrollIntoView({behavior:'smooth'})}catch(e){$('#flow').innerHTML=`<div class="tok err">error: ${escapeHtml(e.message)}</div>`}};
+$('#showraw').onchange=renderFlow;
+$('#btn-whoami').onclick=async()=>{const o=$('#identout');o.style.display='block';o.textContent='…';try{o.textContent=JSON.stringify(await api('/api/tool/whoami',{method:'POST',body:'{}'}),null,2)}catch(e){o.textContent='error: '+e.message}};
+refresh();
+</script>
+</body>
+</html>
